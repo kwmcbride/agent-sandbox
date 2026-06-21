@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import argparse
+import json
 import subprocess
 import sys
 
@@ -78,7 +80,23 @@ def tracked_file_count() -> int:
     return sum(1 for line in output.splitlines() if line.strip())
 
 
-def main() -> int:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    """Parse command-line arguments."""
+    parser = argparse.ArgumentParser(
+        description="Report basic statistics about the current git repository."
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        dest="json_output",
+        help="Emit statistics as a single JSON object to stdout.",
+    )
+    return parser.parse_args(argv)
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args(argv)
+
     if not is_git_repo():
         print(
             "Error: not a git repository (or git is not installed).",
@@ -90,6 +108,16 @@ def main() -> int:
     contributors = unique_contributors()
     recent_file = most_recently_modified_file()
     tracked = tracked_file_count()
+
+    if args.json_output:
+        payload = {
+            "total_commits": commits,
+            "unique_contributors": contributors,
+            "most_recently_modified_file": recent_file,
+            "tracked_files": tracked,
+        }
+        print(json.dumps(payload))
+        return 0
 
     print("Repository statistics")
     print("---------------------")
